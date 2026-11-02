@@ -665,15 +665,15 @@ class NetGuardApp(ctk.CTk):
 
         ctk.CTkLabel(
             tech_header,
-            text="🔬 Telemetria Técnica & Forense (Cybersec)",
+            text="🔬 Telemetria Técnica (Cybersec)",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=("#7c3aed", "#c084fc"),
         ).pack(side="left")
 
         self.sha_btn = ctk.CTkButton(
             tech_header,
-            text="🔑 Hash SHA-256",
-            width=110,
+            text="🔑 SHA-256",
+            width=90,
             height=24,
             font=ctk.CTkFont(size=11, weight="bold"),
             fg_color=("#ede9fe", "#3b235a"),
@@ -681,7 +681,20 @@ class NetGuardApp(ctk.CTk):
             text_color=("#5b21b6", "#e9d5ff"),
             command=self._on_calculate_sha256,
         )
-        self.sha_btn.pack(side="right")
+        self.sha_btn.pack(side="right", padx=(4, 0))
+
+        self.open_folder_btn = ctk.CTkButton(
+            tech_header,
+            text="📁 Abrir Pasta",
+            width=95,
+            height=24,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color=("#dbeafe", "#1e3a8a"),
+            hover_color=("#bfdbfe", "#1d4ed8"),
+            text_color=("#1e40af", "#93c5fd"),
+            command=self._on_open_folder,
+        )
+        self.open_folder_btn.pack(side="right")
 
         self.insp_tech_lbl = ctk.CTkLabel(
             self.tech_box,
@@ -1330,13 +1343,21 @@ class NetGuardApp(ctk.CTk):
         if not conn:
             return
         success, msg = open_file_in_explorer(conn.exe_path)
-        if not success:
+        if success:
+            self.selection_text.configure(
+                text=f"📁 Pasta aberta no Explorer: {conn.process_name}",
+                text_color="#10b981",
+            )
+        else:
             show_modern_status(
                 parent=self,
                 title="Caminho Inacessível",
                 header_badge="⚠️ NÃO FOI POSSÍVEL ABRIR A PASTA",
                 header_title="O executável não possui um caminho físico acessível",
-                fields=[("📂 Caminho", conn.exe_path, "#fbbf24")],
+                fields=[
+                    ("📦 Processo", conn.process_name, "#60a5fa"),
+                    ("📂 Caminho Registrado", conn.exe_path, "#fbbf24"),
+                ],
                 explanation=msg,
                 status_type="warning",
             )

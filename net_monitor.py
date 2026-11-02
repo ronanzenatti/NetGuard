@@ -243,13 +243,46 @@ def terminate_process(pid: int) -> Tuple[bool, str]:
 
 
 def open_file_in_explorer(file_path: str) -> Tuple[bool, str]:
-    """Abre o Windows Explorer com o executável selecionado."""
-    if not file_path or not os.path.exists(file_path):
-        return False, f"Caminho não encontrado ou inacessível: {file_path}"
+    """
+    Abre o Windows Explorer com o executável selecionado e focado.
+    Corrige o comportamento nativo do Explorer no Windows onde parâmetros com espaços
+    dentro do switch /select abriam a pasta 'Documentos' por engano.
+    """
+    if not file_path:
+        return False, "Nenhum caminho de arquivo foi informado para este processo."
 
-    try:
-        normalized_path = os.path.normpath(file_path)
-        subprocess.run(["explorer.exe", f"/select,{normalized_path}"], check=False)
-        return True, "Pasta aberta no Windows Explorer."
-    except Exception as e:
-        return False, f"Falha ao abrir Explorer: {e}"
+    clean_path = str(file_path).strip().strip('"').strip("'")
+
+    if clean_path in ("Não disponível", "Processo encerrado", "Erro ao obter dados") or "Acesso Negado" in clean_path:
+        return (
+            False,
+            f"O caminho deste processo não está acessível no disco ({clean_path}).\n"
+            "Se for um serviço do sistema, execute o NetGuard como Administrador.",
+        )
+
+    norm = os.path.normpath(clean_path)
+
+    # 1. Se o arquivo existe no disco
+    if os.path.exists(norm):
+        try:
+            if os.path.isfile(norm):
+                # No Windows, apenas o caminho deve estar entre aspas, NUNCA o switch /select,
+                cmd = f'explorer.exe /select,"{norm}"'
+            else:
+                cmd = f'explorer.exe "{norm}"'
+
+            subprocess.Popen(cmd, shell=False)
+            return True, f"Pasta aberta com sucesso e arquivo destacado:\n{norm}"
+        except Exception as e:
+            return False, f"Falha ao executar o Windows Explorer: {e}"
+
+    # 2. Se o arquivo específico não for encontrado, tentar abrir a pasta pai
+    parent_dir = os.path.dirname(norm)
+    if parent_dir and os.path.isdir(parent_dir):
+        try:
+            subprocess.Popen(f'explorer.exe "{parent_dir}"', shell=False)
+            return True, f"O executável não foi encontrado diretamente, mas a pasta foi aberta:\n{parent_dir}"
+        except Exception as e:
+            return False, f"Falha ao abrir a pasta pai no Explorer: {e}"
+
+    return False, f"Caminho não encontrado ou inacessível no disco:\n{norm}"
