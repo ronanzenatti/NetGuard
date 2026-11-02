@@ -3,7 +3,8 @@ name: Build & Publish NetGuard (.exe)
 on:
   push:
     branches:
-      - "**"
+      - main
+      - master
     tags:
       - "v*"
   workflow_dispatch:
@@ -49,7 +50,7 @@ jobs:
         shell: pwsh
         run: |
           $hash = (Get-FileHash -Path "dist/NetGuard.exe" -Algorithm SHA256).Hash
-          "$hash  NetGuard.exe" | Out-File -FilePath "dist/NetGuard.exe.sha256" -Encoding utf8
+          "$hash  NetGuard.exe" | Out-File -FilePath "dist/NetGuard.exe.sha256" -Encoding ascii
           Write-Host "SHA-256 gerado: $hash"
 
       - name: Disponibilizar NetGuard.exe nos Artifacts do GitHub Actions
@@ -62,22 +63,22 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Criar/Atualizar Release Automática para Download dos Usuários
-        if: github.event_name == 'push'
+      - name: Publicar Release Oficial no GitHub
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          name: "🛡️ NetGuard 2.0 — Build Automático (${{ github.sha }})"
+          name: "NetGuard 2.0 (Build Automatico)"
           body: |
-            ## 🛡️ NetGuard 2.0 — Cibersegurança, Privacidade & Monitor de Conexões
-            **Desenvolvido por Ronan Adriel Zenatti** (`ronanzenatti@gmail.com`)
+            ## NetGuard 2.0 - Ciberseguranca, Privacidade e Monitor de Conexoes
+            Desenvolvido por Ronan Adriel Zenatti (ronanzenatti@gmail.com)
 
-            ### 📥 Download Direto
-            Baixe o arquivo **`NetGuard.exe`** abaixo na seção **Assets** e execute diretamente no Windows (não requer instalação do Python).
+            ### Download Direto
+            Baixe o executavel **NetGuard.exe** abaixo na secao **Assets** para executar diretamente no Windows (sem precisar instalar Python).
 
             - **Commit**: `${{ github.sha }}`
-            - **Branch/Ref**: `${{ github.ref_name }}`
-            - **Auditoria SHA-256**: Consulte o arquivo `NetGuard.exe.sha256` em anexo.
+            - **Branch**: `${{ github.ref_name }}`
+            - **Auditoria de Seguranca**: Consulte o arquivo `NetGuard.exe.sha256` em anexo.
           files: |
             dist/NetGuard.exe
             dist/NetGuard.exe.sha256
@@ -85,4 +86,3 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
