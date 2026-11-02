@@ -1,0 +1,88 @@
+name: Build & Publish NetGuard (.exe)
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    name: Compilar Executável Windows (NetGuard.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar Dependências Mais Recentes
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade -r requirements.txt
+
+      - name: Gerar Executável com PyInstaller (NetGuard.exe)
+        shell: pwsh
+        run: |
+          pyinstaller --noconsole --onefile --clean `
+            --paths . `
+            --hidden-import net_monitor `
+            --hidden-import security_engine `
+            --hidden-import firewall_manager `
+            --hidden-import ui_dialogs `
+            --collect-all customtkinter `
+            --name NetGuard `
+            main.py
+
+      - name: Gerar Hash SHA-256 do Executável
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path "dist/NetGuard.exe" -Algorithm SHA256).Hash
+          "$hash  NetGuard.exe" | Out-File -FilePath "dist/NetGuard.exe.sha256" -Encoding utf8
+          Write-Host "SHA-256 gerado: $hash"
+
+      - name: Disponibilizar NetGuard.exe nos Artifacts do GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetGuard-Windows-Executable
+          path: |
+            dist/NetGuard.exe
+            dist/NetGuard.exe.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Criar/Atualizar Release Automática para Download dos Usuários
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          name: "🛡️ NetGuard 2.0 — Build Automático (${{ github.sha }})"
+          body: |
+            ## 🛡️ NetGuard 2.0 — Cibersegurança, Privacidade & Monitor de Conexões
+            **Desenvolvido por Ronan Adriel Zenatti** (`ronanzenatti@gmail.com`)
+
+            ### 📥 Download Direto
+            Baixe o arquivo **`NetGuard.exe`** abaixo na seção **Assets** e execute diretamente no Windows (não requer instalação do Python).
+
+            - **Commit**: `${{ github.sha }}`
+            - **Branch/Ref**: `${{ github.ref_name }}`
+            - **Auditoria SHA-256**: Consulte o arquivo `NetGuard.exe.sha256` em anexo.
+          files: |
+            dist/NetGuard.exe
+            dist/NetGuard.exe.sha256
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

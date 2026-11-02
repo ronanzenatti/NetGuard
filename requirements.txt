@@ -1,0 +1,8 @@
+# Dependências do NetGuard - Monitor de Conexões de Rede
+# Versões mais recentes validadas para Python 3.12+
+psutil>=7.2.2
+customtkinter>=6.0.0
+Pillow>=13.0.0
+packaging>=26.3
+darkdetect>=0.8.0
+pyinstaller>=6.22.3

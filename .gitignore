@@ -1,0 +1,29 @@
+# Ambientes Virtuais Python
+.venv/
+venv/
+env/
+ENV/
+
+# Cache e Bytecode do Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Artefatos de Compilação do PyInstaller
+build/
+dist/
+*.manifest
+*.spec
+
+# Logs e Relatórios Exportados pelo Usuário
+*.log
+netguard_cybersec_*.csv
+netguard_conexoes_*.csv
+
+# Configurações de IDEs e Sistema Operacional
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
