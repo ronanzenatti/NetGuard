@@ -36,7 +36,8 @@ jobs:
       - name: Gerar Executável com PyInstaller (NetGuard.exe)
         shell: pwsh
         run: |
-          pyinstaller --noconsole --onefile --clean `
+          pyinstaller --noconsole --onefile --clean 
+            --uac-admin `
             --paths . `
             --hidden-import net_monitor `
             --hidden-import security_engine `

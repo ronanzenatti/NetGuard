@@ -61,18 +61,18 @@ class FirewallManagerWindow(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent_app = parent
         self.title("🛡️ Central de Bloqueios do Firewall — NetGuard")
-        self.geometry("820x480")
-        self.minsize(700, 400)
+        self.geometry("900x520")
+        self.minsize(760, 420)
         self.configure(fg_color=("#f8fafc", "#141418"))
         self.transient(parent)
         self.grab_set()
 
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Cabeçalho explicativo colorido
+        # ---------------- 1. Cabeçalho explicativo colorido ----------------
         header = ctk.CTkFrame(self, fg_color=("#e2e8f0", "#1e1e26"), corner_radius=8, border_width=1, border_color=("#cbd5e1", "#343442"))
-        header.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 8))
+        header.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 6))
         header.grid_columnconfigure(0, weight=1)
 
         title_lbl = ctk.CTkLabel(
@@ -85,44 +85,76 @@ class FirewallManagerWindow(ctk.CTkToplevel):
 
         desc_lbl = ctk.CTkLabel(
             header,
-            text="Abaixo estão todos os programas e endereços IP bloqueados por você. Para restaurar o acesso à internet de qualquer item, selecione a linha e clique no botão verde '🔓 Desbloquear Selecionado'.",
+            text="Todos os programas e endereços IP bloqueados por você são salvos permanentemente e sincronizados com o Windows Defender Firewall. Mesmo que o aplicativo seja fechado e aberto novamente, seus bloqueios continuam ativos e listados abaixo.",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=("gray25", "#d4d4d8"),
-            wraplength=760,
+            wraplength=840,
             justify="left",
         )
         desc_lbl.grid(row=1, column=0, padx=14, pady=(0, 10), sticky="w")
 
-        # Lista de regras (Treeview)
+        # ---------------- 1.1 Aviso de Modo Não-Elevado (se aplicável) ----------------
+        if not is_admin():
+            admin_warn = ctk.CTkFrame(self, fg_color=("#fef3c7", "#2e1c07"), corner_radius=8, border_width=1, border_color=("#f59e0b", "#92400e"))
+            admin_warn.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 6))
+            admin_warn.grid_columnconfigure(0, weight=1)
+
+            warn_txt = ctk.CTkLabel(
+                admin_warn,
+                text="⚠️ Modo Usuário Padrão: Seus bloqueios continuam ativos no Windows Defender Firewall. Porém, para desbloquear itens ou criar novos bloqueios, são necessários privilégios de Administrador.",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color=("#92400e", "#fde68a"),
+                wraplength=640,
+                justify="left",
+            )
+            warn_txt.grid(row=0, column=0, padx=12, pady=6, sticky="w")
+
+            elev_win_btn = ctk.CTkButton(
+                admin_warn,
+                text="⚡ Elevar para Administrador",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                fg_color="#f59e0b",
+                hover_color="#d97706",
+                text_color="black",
+                height=28,
+                command=self._elevate_from_window,
+            )
+            elev_win_btn.grid(row=0, column=1, padx=12, pady=6, sticky="e")
+
+        # ---------------- 2. Lista de regras (Treeview) ----------------
         table_frame = ctk.CTkFrame(self, corner_radius=8, fg_color=("#ffffff", "#18181b"))
-        table_frame.grid(row=1, column=0, sticky="nsew", padx=16, pady=6)
+        table_frame.grid(row=2, column=0, sticky="nsew", padx=16, pady=4)
         table_frame.grid_rowconfigure(0, weight=1)
         table_frame.grid_columnconfigure(0, weight=1)
 
-        cols = ("rule_name", "target_type", "target_value", "direction", "enabled")
+        cols = ("rule_name", "target_type", "target_value", "direction", "enabled", "created_at")
         self.rules_tree = ttk.Treeview(table_frame, columns=cols, show="headings", selectmode="browse")
 
         self.rules_tree.heading("rule_name", text="Nome da Regra no Firewall")
-        self.rules_tree.heading("target_type", text="Tipo de Bloqueio")
-        self.rules_tree.heading("target_value", text="Alvo Bloqueado (Programa ou IP)")
-        self.rules_tree.heading("direction", text="Ação Aplicada")
+        self.rules_tree.heading("target_type", text="Tipo")
+        self.rules_tree.heading("target_value", text="Alvo Bloqueado (Caminho Executável ou IP)")
+        self.rules_tree.heading("direction", text="Ação")
         self.rules_tree.heading("enabled", text="Estado")
+        self.rules_tree.heading("created_at", text="Registrado Em")
 
-        self.rules_tree.column("rule_name", width=240, anchor="w")
-        self.rules_tree.column("target_type", width=140, anchor="center")
-        self.rules_tree.column("target_value", width=220, anchor="w")
+        self.rules_tree.column("rule_name", width=220, anchor="w")
+        self.rules_tree.column("target_type", width=130, anchor="center")
+        self.rules_tree.column("target_value", width=280, anchor="w")
         self.rules_tree.column("direction", width=120, anchor="center")
-        self.rules_tree.column("enabled", width=80, anchor="center")
+        self.rules_tree.column("enabled", width=75, anchor="center")
+        self.rules_tree.column("created_at", width=125, anchor="center")
 
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.rules_tree.yview)
-        self.rules_tree.configure(yscrollcommand=vsb.set)
+        hsb = ttk.Scrollbar(table_frame, orient="horizontal", command=self.rules_tree.xview)
+        self.rules_tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         self.rules_tree.grid(row=0, column=0, sticky="nsew")
         vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
 
-        # Barra de botões
+        # ---------------- 3. Barra de botões inferior ----------------
         btn_bar = ctk.CTkFrame(self, fg_color="transparent")
-        btn_bar.grid(row=2, column=0, sticky="ew", padx=16, pady=(6, 14))
+        btn_bar.grid(row=3, column=0, sticky="ew", padx=16, pady=(6, 14))
 
         self.unblock_btn = ctk.CTkButton(
             btn_bar,
@@ -171,6 +203,11 @@ class FirewallManagerWindow(ctk.CTkToplevel):
 
         self.load_rules()
 
+    def _elevate_from_window(self):
+        """Solicita elevação de UAC a partir do gerenciador de bloqueios."""
+        self.destroy()
+        self.parent_app._handle_request_elevation()
+
     def load_rules(self):
         self.rules_tree.delete(*self.rules_tree.get_children())
         rules: List[FirewallRuleItem] = list_netguard_rules()
@@ -178,7 +215,7 @@ class FirewallManagerWindow(ctk.CTkToplevel):
             self.rules_tree.insert(
                 "",
                 "end",
-                values=(r.rule_name, r.target_type, r.target_value, r.direction, r.enabled),
+                values=(r.rule_name, r.target_type, r.target_value, r.direction, r.enabled, r.created_at or "-"),
             )
         self.count_lbl.configure(
             text=f"🔒 {len(rules)} bloqueio(s) ativo(s)" if rules else "✅ Nenhum bloqueio ativo no momento"
@@ -200,6 +237,22 @@ class FirewallManagerWindow(ctk.CTkToplevel):
 
         vals = self.rules_tree.item(sel[0], "values")
         rule_name, target_type, target_value = vals[0], vals[1], vals[2]
+
+        if not is_admin():
+            show_modern_status(
+                parent=self,
+                title="Elevação de Administrador Necessária",
+                header_badge="🛡️ ELEVAÇÃO REQUERIDA",
+                header_title="Permissão de Administrador necessária para desbloquear",
+                fields=[
+                    ("🛡️ Regra Alvo", str(rule_name), "#f59e0b"),
+                    ("🎯 Alvo", str(target_value), "#60a5fa"),
+                ],
+                explanation="O Windows Defender Firewall exige privilégios de Administrador para remover regras de bloqueio do sistema.",
+                footer_tip="⚡ Clique no botão 'Executar como Administrador' para reiniciar com acesso total.",
+                status_type="warning",
+            )
+            return
 
         ok, msg = remove_netguard_rule(rule_name)
         if ok:
